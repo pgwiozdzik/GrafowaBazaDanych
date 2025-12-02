@@ -1,4 +1,7 @@
-import { useQuery, gql } from '@apollo/client';
+// gql i inne narzędzia zostają w głównym pakiecie
+import { gql } from '@apollo/client';
+// useQuery pobieramy z dedykowanego modułu React
+import { useQuery } from '@apollo/client/react';
 // Zapytanie GraphQL - to tu dzieje się magia grafowa
 const GET_BOOKS = gql`
   query GetBooks {
