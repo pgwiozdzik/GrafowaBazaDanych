@@ -3,9 +3,12 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
-// Łączymy się z portem 3000, który ustawiłeś w .env backendu
+// Logika: Jeśli jesteśmy na produkcji (Railway), użyj zmiennej środowiskowej.
+// Jeśli testujesz u siebie lokalnie, użyj localhost.
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/';
+
 const client = new ApolloClient({
-    uri: 'http://localhost:3000/',
+    uri: apiUrl,
     cache: new InMemoryCache(),
 });
 
