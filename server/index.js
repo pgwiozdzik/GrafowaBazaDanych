@@ -66,10 +66,10 @@ async function startServer() {
         const server = new ApolloServer({
             schema,
             cache: "bounded",
-            // NAPRAWA CORS:
+            // TRIK "Lustrzany CORS"
             cors: {
-                origin: "*",      // Pozwól każdemu
-                credentials: false // Wyłącz credentials (to naprawi konflikt z gwiazdką)
+                origin: true,       // To oznacza: "Akceptuj każdego, kto pyta" (dynamicznie)
+                credentials: true   // Dzięki temu 'origin: true' działa tam, gdzie gwiazdka by nie zadziałała
             }
         });
 
