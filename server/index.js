@@ -3,7 +3,6 @@ const { ApolloServer } = require('apollo-server');
 const { Neo4jGraphQL } = require('@neo4j/graphql');
 const neo4j = require('neo4j-driver');
 
-// 1. Definicja Modelu (Schema)
 const typeDefs = `
   type User @node {
     username: String!
@@ -33,22 +32,21 @@ const typeDefs = `
     isbn: String
     description: String
     
-    # Relacje
     author: [Author!]! @relationship(type: "WROTE", direction: IN)
     genres: [Genre!]! @relationship(type: "BELONGS_TO", direction: OUT)
     reviews: [Review!]! @relationship(type: "HAS_REVIEW", direction: IN)
-    
-    # Kto wypożyczył (lista, bo biblioteka tego wymaga)
     currentBorrower: [User!]! @relationship(type: "BORROWED", direction: IN)
 
-    # --- REKOMENDACJE (Logika Grafowa) ---
-    # Zapytanie Cypher w jednej linii, żeby uniknąć błędów formatowania
-    recommended: [Book!]! @cypher(statement: "MATCH (this)<-[:BORROWED]-(u:User)-[:BORROWED]->(other:Book) WHERE other <> this RETURN other LIMIT 3")
+    # --- POPRAWKA TUTAJ ---
+    # Dodano argument: columnName: "other"
+    # Mówi on bibliotece, że wynik zapytania (RETURN other) ma trafić do tego pola.
+    recommended: [Book!]! @cypher(
+      statement: "MATCH (this)<-[:BORROWED]-(u:User)-[:BORROWED]->(other:Book) WHERE other <> this RETURN other LIMIT 3",
+      columnName: "other"
+    )
   }
 `;
 
-// 2. Konfiguracja połączenia z Neo4j
-// Używamy tylko URI i Auth, bo 'neo4j+s' w .env samo włącza szyfrowanie
 const driver = neo4j.driver(
     process.env.NEO4J_URI,
     neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD)
@@ -57,15 +55,11 @@ const driver = neo4j.driver(
 async function startServer() {
     try {
         const neoSchema = new Neo4jGraphQL({ typeDefs, driver });
-
-        // Czekamy na wygenerowanie schematu
         const schema = await neoSchema.getSchema();
 
-        // 3. Start Serwera Apollo
         const server = new ApolloServer({
             schema,
-            cache: "bounded", // Zabezpieczenie pamięci
-            // Prosty CORS - pozwala wszystkim
+            cache: "bounded",
             cors: true
         });
 
@@ -75,7 +69,6 @@ async function startServer() {
 
     } catch (error) {
         console.error("❌ BŁĄD KRYTYCZNY STARTU SERWERA:");
-        // Wypisujemy dokładny błąd, żeby wiedzieć co poszło nie tak
         console.error(JSON.stringify(error, null, 2));
     }
 }
