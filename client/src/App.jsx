@@ -30,7 +30,6 @@ const GET_BOOKS_ADVANCED = gql`
 
 // --- MUTACJE (ZMIANY W GRAFIE) ---
 
-// 1. Rejestracja = Stworzenie węzła User
 const REGISTER_USER = gql`
   mutation Register($username: String!) {
     createUsers(input: [{ username: $username }]) {
@@ -39,70 +38,80 @@ const REGISTER_USER = gql`
   }
 `;
 
-// 2. Wypożyczenie = Stworzenie krawędzi [:BORROWED] (CONNECT)
+// POPRAWKA: Dodano nawiasy kwadratowe [ ] wewnątrz connect
 const BORROW_BOOK = gql`
   mutation Borrow($bookTitle: String!, $username: String!) {
     updateBooks(
       where: { title: $bookTitle }
       connect: { 
-        currentBorrower: { 
-          where: { node: { username: $username } } 
-        } 
+        currentBorrower: [
+          { 
+            where: { node: { username: $username } } 
+          }
+        ]
       }
     ) {
-      books { title, currentBorrower { username } }
+      books { title }
     }
   }
 `;
 
-// 3. Zwrot = Usunięcie krawędzi [:BORROWED] (DISCONNECT)
+// POPRAWKA: Dodano nawiasy kwadratowe [ ] wewnątrz disconnect
 const RETURN_BOOK = gql`
   mutation Return($bookTitle: String!, $username: String!) {
     updateBooks(
       where: { title: $bookTitle }
       disconnect: { 
-        currentBorrower: { 
-          where: { node: { username: $username } } 
-        } 
+        currentBorrower: [
+          { 
+            where: { node: { username: $username } } 
+          }
+        ]
       }
     ) {
-      books { title, currentBorrower { username } }
+      books { title }
     }
   }
 `;
 
 function App() {
-    // Stan aplikacji
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
-    // Stan użytkownika (Logowanie)
-    const [currentUser, setCurrentUser] = useState(null); // Tutaj trzymamy nazwę zalogowanego
+    const [currentUser, setCurrentUser] = useState(null);
     const [usernameInput, setUsernameInput] = useState("");
 
-    // Logika wyszukiwania
     const isNumeric = /^\d+$/.test(searchTerm) && searchTerm.length > 0;
     const searchYear = isNumeric ? parseInt(searchTerm, 10) : -1;
 
-    // Hooki GraphQL
     const { loading, error, data, refetch } = useQuery(GET_BOOKS_ADVANCED, {
         variables: { searchTerm, searchYear }
     });
 
     const [registerUser] = useMutation(REGISTER_USER);
-    const [borrowBook] = useMutation(BORROW_BOOK, { onCompleted: () => refetch() });
-    const [returnBook] = useMutation(RETURN_BOOK, { onCompleted: () => refetch() });
+    const [borrowBook] = useMutation(BORROW_BOOK, {
+        onCompleted: () => {
+            refetch();
+            alert("Wypożyczono pomyślnie!");
+        },
+        onError: (err) => alert("Błąd wypożyczania: " + err.message)
+    });
 
-    // Funkcje obsługi
+    const [returnBook] = useMutation(RETURN_BOOK, {
+        onCompleted: () => {
+            refetch();
+            alert("Zwrócono pomyślnie!");
+        },
+        onError: (err) => alert("Błąd zwrotu: " + err.message)
+    });
+
     const handleLogin = async (e) => {
         e.preventDefault();
         if (!usernameInput) return;
         try {
-            // Próbujemy stworzyć użytkownika (jeśli istnieje, Neo4j może zwrócić błąd lub po prostu go nie stworzyć - w PoC zakładamy sukces)
-            // W idealnym świecie najpierw sprawdzamy czy istnieje, ale tu upraszczamy: Rejestracja/Logowanie w jednym.
             await registerUser({ variables: { username: usernameInput } }).catch(() => {});
             setCurrentUser(usernameInput);
-            alert(`Witaj, ${usernameInput}! Możesz teraz wypożyczać książki.`);
+            alert(`Witaj, ${usernameInput}!`);
         } catch (err) {
             console.error(err);
         }
@@ -113,20 +122,18 @@ function App() {
         await borrowBook({
             variables: { bookTitle: selectedBook.title, username: currentUser }
         });
-        alert("Książka wypożyczona! (Utworzono krawędź w grafie)");
-        setSelectedBook(null); // Zamykamy modal
+        // Zamknięcie modala nastąpi po sukcesie lub ręcznie
+        setSelectedBook(null);
     };
 
     const handleReturn = async () => {
         await returnBook({
             variables: { bookTitle: selectedBook.title, username: currentUser }
         });
-        alert("Książka zwrócona! (Usunięto krawędź z grafu)");
         setSelectedBook(null);
     };
 
     const isAvailable = (book) => !book.currentBorrower || book.currentBorrower.length === 0;
-    // Sprawdź czy to JA wypożyczyłem tę książkę
     const isBorrowedByMe = (book) => book.currentBorrower.some(u => u.username === currentUser);
 
     return (
@@ -193,7 +200,7 @@ function App() {
                 ))}
             </div>
 
-            {/* MODAL SZCZEGÓŁÓW I WYPOŻYCZANIA */}
+            {/* MODAL */}
             {selectedBook && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={() => setSelectedBook(null)}>
                     <div style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '500px', width: '90%', position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -201,7 +208,6 @@ function App() {
 
                         <h2 style={{ marginTop: 0 }}>{selectedBook.title}</h2>
 
-                        {/* STATUS I AKCJE WYPOŻYCZANIA */}
                         <div style={{ margin: '20px 0', padding: '20px', background: isAvailable(selectedBook) ? '#e6fffa' : '#fff5f5', borderRadius: '8px', border: '1px solid #ddd' }}>
                             <strong>Status: </strong>
                             {isAvailable(selectedBook)
@@ -230,7 +236,7 @@ function App() {
                         <p><strong>Rok:</strong> {selectedBook.year}</p>
 
                         <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c5ce7', marginTop: '20px' }}>
-                            <h3 style={{ marginTop: 0, color: '#6c5ce7', fontSize: '1rem' }}>💡 Rekomendacje (Kto czytał to, czytał też...):</h3>
+                            <h3 style={{ marginTop: 0, color: '#6c5ce7', fontSize: '1rem' }}>💡 Rekomendacje:</h3>
                             {selectedBook.recommended.length === 0 ? (
                                 <p style={{ fontSize: '0.9em', color: '#666' }}>Brak wystarczających danych.</p>
                             ) : (
