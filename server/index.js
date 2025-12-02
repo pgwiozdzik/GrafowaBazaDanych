@@ -66,10 +66,10 @@ async function startServer() {
         const server = new ApolloServer({
             schema,
             cache: "bounded",
-            // CORS zostawiamy włączony
+            // NAPRAWA CORS:
             cors: {
-                origin: "*",
-                credentials: true
+                origin: "*",      // Pozwól każdemu
+                credentials: false // Wyłącz credentials (to naprawi konflikt z gwiazdką)
             }
         });
 
