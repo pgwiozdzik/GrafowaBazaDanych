@@ -1,6 +1,4 @@
-import { gql } from '@apollo/client';
-import { useQuery } from '@apollo/client/react/hooks';
-
+import { useQuery, gql } from '@apollo/client';
 // Zapytanie GraphQL - to tu dzieje się magia grafowa
 const GET_BOOKS = gql`
   query GetBooks {
