@@ -66,11 +66,9 @@ async function startServer() {
         const server = new ApolloServer({
             schema,
             cache: "bounded",
-            // TRIK "Lustrzany CORS"
-            cors: {
-                origin: true,       // To oznacza: "Akceptuj każdego, kto pyta" (dynamicznie)
-                credentials: true   // Dzięki temu 'origin: true' działa tam, gdzie gwiazdka by nie zadziałała
-            }
+            // ZMIANA: Ustawiamy po prostu 'true'.
+            // To przywraca domyślne zachowanie: "Pozwalaj wszystkim (gwiazdka), bez credentials".
+            cors: true
         });
 
         const port = process.env.PORT || 3000;
