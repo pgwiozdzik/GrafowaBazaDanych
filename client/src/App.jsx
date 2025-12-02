@@ -28,7 +28,7 @@ const GET_BOOKS_ADVANCED = gql`
   }
 `;
 
-// --- MUTACJE (Wersja PANCERNA z _IN) ---
+// --- MUTACJE (POPRAWIONE DLA @neo4j/graphql v7) ---
 
 const REGISTER_USER = gql`
   mutation Register($username: String!) {
@@ -41,13 +41,13 @@ const REGISTER_USER = gql`
 const BORROW_BOOK = gql`
   mutation Borrow($bookTitle: String!, $username: String!) {
     updateBooks(
-      # ZMIANA: title_IN zamiast title
+      # Używamy title_IN (szukanie na liście), bo wersja v7 nie pozwala na proste przypisanie
       where: { title_IN: [$bookTitle] }
       update: {
         currentBorrower: {
           connect: [
             { 
-              # ZMIANA: username_IN zamiast username
+              # Tutaj też używamy username_IN
               where: { node: { username_IN: [$username] } } 
             }
           ]
@@ -62,13 +62,11 @@ const BORROW_BOOK = gql`
 const RETURN_BOOK = gql`
   mutation Return($bookTitle: String!, $username: String!) {
     updateBooks(
-      # ZMIANA: title_IN zamiast title
       where: { title_IN: [$bookTitle] }
       update: {
         currentBorrower: {
           disconnect: [
             { 
-              # ZMIANA: username_IN zamiast username
               where: { node: { username_IN: [$username] } } 
             }
           ]
@@ -99,7 +97,7 @@ function App() {
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Wypożyczono książkę.");
+            alert("Sukces! Wypożyczono książkę (dodano krawędź w grafie).");
             setSelectedBook(null);
         },
         onError: (err) => alert("Błąd wypożyczania: " + err.message)
@@ -108,7 +106,7 @@ function App() {
     const [returnBook] = useMutation(RETURN_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Zwrócono książkę.");
+            alert("Sukces! Zwrócono książkę (usunięto krawędź z grafu).");
             setSelectedBook(null);
         },
         onError: (err) => alert("Błąd zwrotu: " + err.message)
