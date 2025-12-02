@@ -38,11 +38,20 @@ const typeDefs = `
     author: [Author!]! @relationship(type: "WROTE", direction: IN)
     genres: [Genre!]! @relationship(type: "BELONGS_TO", direction: OUT)
     reviews: [Review!]! @relationship(type: "HAS_REVIEW", direction: IN)
-    
-    # POPRAWKA TUTAJ: Dodano wykrzyknik na końcu [User!]!
     currentBorrower: [User!]! @relationship(type: "BORROWED", direction: IN)
+
+    # --- NOWOŚĆ: LOGIKA GRAFOWA ---
+    # To pole wykonuje analizę grafu w czasie rzeczywistym!
+    # Szukamy użytkowników, którzy wypożyczyli TĘ książkę, a potem sprawdzamy, co JESZCZE czytali.
+    recommended: [Book!]! @cypher(statement: """
+      MATCH (this)<-[:BORROWED]-(u:User)-[:BORROWED]->(other:Book)
+      WHERE other <> this
+      RETURN other
+      LIMIT 3
+    """)
   }
 `;
+
 
 const driver = neo4j.driver(
     process.env.NEO4J_URI,

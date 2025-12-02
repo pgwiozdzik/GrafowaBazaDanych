@@ -12,44 +12,52 @@ const seedQuery = `
     // 1. Użytkownicy
     MERGE (jan:User {username: "JanKowalski"})
     MERGE (anna:User {username: "AnnaNowak"})
+    MERGE (tomek:User {username: "TomekZ"})
 
-    // 2. Książki i Autorzy (tworzymy zmienne wiedzmin i hobbit)
-    MERGE (wiedzmin:Book {title: "Ostatnie Życzenie"})
-    ON CREATE SET wiedzmin.year = 1993
+    // 2. Książki
+    MERGE (wiedzmin:Book {title: "Ostatnie Życzenie"}) ON CREATE SET wiedzmin.year = 1993
+    MERGE (hobbit:Book {title: "Hobbit"}) ON CREATE SET hobbit.year = 1937
+    MERGE (harry:Book {title: "Harry Potter"}) ON CREATE SET harry.year = 1997
+    MERGE (cyberiada:Book {title: "Cyberiada"}) ON CREATE SET cyberiada.year = 1965
+
+    // 3. Autorzy i Gatunki (skrótowo)
+    MERGE (sapkowski:Author {name: "Andrzej Sapkowski"})-[:WROTE]->(wiedzmin)
+    MERGE (tolkien:Author {name: "J.R.R. Tolkien"})-[:WROTE]->(hobbit)
+    MERGE (rowling:Author {name: "J.K. Rowling"})-[:WROTE]->(harry)
+    MERGE (lem:Author {name: "Stanisław Lem"})-[:WROTE]->(cyberiada)
     
-    MERGE (hobbit:Book {title: "Hobbit"})
-    ON CREATE SET hobbit.year = 1937
+    MERGE (fantasy:Genre {name: "Fantasy"})
+    MERGE (wiedzmin)-[:BELONGS_TO]->(fantasy)
+    MERGE (hobbit)-[:BELONGS_TO]->(fantasy)
+    MERGE (harry)-[:BELONGS_TO]->(fantasy)
 
-    MERGE (sapkowski:Author {name: "Andrzej Sapkowski"})
-    MERGE (sapkowski)-[:WROTE]->(wiedzmin)
+    // 4. HISTORIA WYPOŻYCZEŃ (To tworzy rekomendacje!)
     
-    MERGE (tolkien:Author {name: "J.R.R. Tolkien"})
-    MERGE (tolkien)-[:WROTE]->(hobbit)
-
-    // 3. Recenzje
-    // POPRAWKA: Przekazujemy DALEJ obie zmienne (wiedzmin ORAZ hobbit)
-    // Dzięki temu 'hobbit' nie zniknie z pamięci.
-    WITH wiedzmin, hobbit
-    
-    MERGE (recenzja1:Review {authorName: "Krytyk123", bookTitle: "Ostatnie Życzenie"})
-    SET recenzja1.rating = 5, 
-        recenzja1.text = "Fantastyczna książka, polecam każdemu!"
-    MERGE (recenzja1)-[:HAS_REVIEW]->(wiedzmin)
-
-    // 4. Wypożyczenie
-    // Teraz 'hobbit' jest nadal dostępny, bo przekazaliśmy go wyżej
-    WITH hobbit
-    MATCH (jan:User {username: "JanKowalski"})
+    // Scenariusz: Jan lubi klasykę fantasy. Przeczytał Wiedźmina i Hobbita.
+    MERGE (jan)-[:BORROWED]->(wiedzmin)
     MERGE (jan)-[:BORROWED]->(hobbit)
+
+    // Scenariusz: Anna też przeczytała Wiedźmina, ale też Harry'ego Pottera.
+    MERGE (anna)-[:BORROWED]->(wiedzmin)
+    MERGE (anna)-[:BORROWED]->(harry)
+
+    // Scenariusz: Tomek przeczytał tylko Cyberiadę.
+    MERGE (tomek)-[:BORROWED]->(cyberiada)
+    
+    // WNIOSEK DLA GRAFU:
+    // Jeśli wejdziesz w "Ostatnie Życzenie":
+    // - Graf pójdzie do Jana -> Jan czytał też Hobbita -> Poleci Hobbita.
+    // - Graf pójdzie do Anny -> Anna czytała Harry'ego -> Poleci Harry'ego.
+    // - Graf NIE poleci Cyberiady, bo nikt, kto czytał Wiedźmina, nie czytał Cyberiady.
 `;
 
 async function seed() {
     try {
         console.log("🌱 Łączę się z bazą Neo4j Aura...");
         await session.run(seedQuery);
-        console.log("✅ Dane zostały zaktualizowane pomyślnie!");
+        console.log("✅ Dane i relacje rekomendacji zaktualizowane!");
     } catch (error) {
-        console.error("❌ Błąd podczas seedowania:", error);
+        console.error("❌ Błąd:", error);
     } finally {
         await session.close();
         await driver.close();
