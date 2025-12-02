@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { gql } from '@apollo/client';
-// Importujemy useQuery z podkatalogu react (zgodnie z naprawą builda)
 import { useQuery } from '@apollo/client/react';
 
 // ZAAWANSOWANE ZAPYTANIE
-// Poprawka: Używamy składni `_SOME` dla pól, które są tablicami (autorzy, gatunki)
+// Dodaliśmy zmienną $searchYear (Int)
 const GET_BOOKS_ADVANCED = gql`
-  query GetBooksAdvanced($searchTerm: String!) {
+  query GetBooksAdvanced($searchTerm: String!, $searchYear: Int) {
     books(
       where: {
         OR: [
           { title_CONTAINS: $searchTerm },
           { author_SOME: { name_CONTAINS: $searchTerm } },
-          { genres_SOME: { name_CONTAINS: $searchTerm } }
+          { genres_SOME: { name_CONTAINS: $searchTerm } },
+          # Nowy warunek: szukaj po roku
+          { year: $searchYear }
         ]
       }
     ) {
@@ -30,7 +31,6 @@ const GET_BOOKS_ADVANCED = gql`
         text
         authorName
       }
-      # Pamiętamy, że to teraz tablica [User!]!
       currentBorrower {
         username
       }
@@ -42,11 +42,20 @@ function App() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
+    // LOGIKA ROKU:
+    // Próbujemy zamienić tekst na liczbę.
+    // Jeśli się uda (np. wpisano "1993") -> szukamy roku 1993.
+    // Jeśli się nie uda (wpisano "Wiedźmin") -> szukamy roku -1 (który nie istnieje, więc ten warunek jest pomijany).
+    const parsedYear = parseInt(searchTerm);
+    const searchYear = isNaN(parsedYear) ? -1 : parsedYear;
+
     const { loading, error, data } = useQuery(GET_BOOKS_ADVANCED, {
-        variables: { searchTerm: searchTerm }
+        variables: {
+            searchTerm: searchTerm,
+            searchYear: searchYear
+        }
     });
 
-    // Funkcja sprawdzająca dostępność (dla tablicy)
     const isAvailable = (book) => !book.currentBorrower || book.currentBorrower.length === 0;
 
     return (
@@ -57,7 +66,8 @@ function App() {
                 <h1 style={{ color: '#2c3e50' }}>🔎 Biblioteka Grafowa</h1>
                 <input
                     type="text"
-                    placeholder="Szukaj po tytule, autorze lub gatunku..."
+                    // Zmieniliśmy placeholder, żeby informował o roku
+                    placeholder="Szukaj po tytule, autorze, gatunku lub roku..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{
@@ -76,18 +86,16 @@ function App() {
                 {data && data.books.map((book, index) => (
                     <div
                         key={index}
-                        // TO JEST KLUCZOWE: Obsługa kliknięcia
                         onClick={() => setSelectedBook(book)}
                         style={{
                             border: '1px solid #ddd', borderRadius: '10px', padding: '20px',
-                            cursor: 'pointer', // Kursor rączki sugeruje klikalność
+                            cursor: 'pointer',
                             background: 'white', transition: 'transform 0.2s',
                             boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative'
                         }}
                         onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                         onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
-                        {/* Status Dostępności */}
                         <div style={{
                             position: 'absolute', top: '10px', right: '10px',
                             padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
@@ -112,7 +120,7 @@ function App() {
                 ))}
             </div>
 
-            {/* MODAL (OKNO SZCZEGÓŁÓW) */}
+            {/* MODAL */}
             {selectedBook && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
@@ -143,6 +151,7 @@ function App() {
 
                         <p><strong>Autor:</strong> {selectedBook.author.map(a => a.name).join(', ')}</p>
                         <p><strong>Gatunki:</strong> {selectedBook.genres.map(g => g.name).join(', ')}</p>
+                        <p><strong>Rok wydania:</strong> {selectedBook.year}</p>
                         <p><strong>Opis:</strong> {selectedBook.description || "Brak opisu."}</p>
 
                         <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #eee' }} />
