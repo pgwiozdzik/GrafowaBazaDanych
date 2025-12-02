@@ -28,7 +28,7 @@ const GET_BOOKS_ADVANCED = gql`
   }
 `;
 
-// --- MUTACJE (POPRAWIONE DLA WERSJI v4+) ---
+// --- MUTACJE ---
 
 const REGISTER_USER = gql`
   mutation Register($username: String!) {
@@ -38,18 +38,16 @@ const REGISTER_USER = gql`
   }
 `;
 
-// POPRAWKA:
-// 1. "where" używa { equals: ... }
-// 2. "connect" jest teraz wewnątrz obiektu "update" -> "currentBorrower"
+// POPRAWKA: Usunięto "{ equals: ... }". Używamy prostego przypisania "title: $bookTitle"
 const BORROW_BOOK = gql`
   mutation Borrow($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: { equals: $bookTitle } }
+      where: { title: $bookTitle }
       update: {
         currentBorrower: {
           connect: [
             { 
-              where: { node: { username: { equals: $username } } } 
+              where: { node: { username: $username } } 
             }
           ]
         }
@@ -60,18 +58,16 @@ const BORROW_BOOK = gql`
   }
 `;
 
-// POPRAWKA:
-// 1. "where" używa { equals: ... }
-// 2. "disconnect" jest wewnątrz obiektu "update"
+// POPRAWKA: Usunięto "{ equals: ... }"
 const RETURN_BOOK = gql`
   mutation Return($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: { equals: $bookTitle } }
+      where: { title: $bookTitle }
       update: {
         currentBorrower: {
           disconnect: [
             { 
-              where: { node: { username: { equals: $username } } } 
+              where: { node: { username: $username } } 
             }
           ]
         }
@@ -101,8 +97,8 @@ function App() {
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Wypożyczono książkę (dodano krawędź w grafie).");
-            setSelectedBook(null); // Zamykamy modal po sukcesie
+            alert("Sukces! Wypożyczono książkę (dodano krawędź).");
+            setSelectedBook(null);
         },
         onError: (err) => alert("Błąd wypożyczania: " + err.message)
     });
@@ -110,7 +106,7 @@ function App() {
     const [returnBook] = useMutation(RETURN_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Zwrócono książkę (usunięto krawędź z grafu).");
+            alert("Sukces! Zwrócono książkę (usunięto krawędź).");
             setSelectedBook(null);
         },
         onError: (err) => alert("Błąd zwrotu: " + err.message)
