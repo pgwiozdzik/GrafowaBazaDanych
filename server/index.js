@@ -34,11 +34,15 @@ const driver = neo4j.driver(
 async function startServer() {
     try {
         const neoSchema = new Neo4jGraphQL({ typeDefs, driver });
-
         const schema = await neoSchema.getSchema();
 
+        // ZMIANA TUTAJ: Dodajemy konfigurację CORS
         const server = new ApolloServer({
             schema,
+            cors: {
+                origin: "*",        // Pozwól na dostęp zewsząd
+                credentials: true   // Pozwól na przesyłanie nagłówków
+            }
         });
 
         const port = process.env.PORT || 3000;
