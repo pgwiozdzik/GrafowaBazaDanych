@@ -28,7 +28,7 @@ const GET_BOOKS_ADVANCED = gql`
   }
 `;
 
-// --- MUTACJE ---
+// --- MUTACJE (Wersja PANCERNA z _IN) ---
 
 const REGISTER_USER = gql`
   mutation Register($username: String!) {
@@ -38,16 +38,17 @@ const REGISTER_USER = gql`
   }
 `;
 
-// POPRAWKA: Usunięto "{ equals: ... }". Używamy prostego przypisania "title: $bookTitle"
 const BORROW_BOOK = gql`
   mutation Borrow($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: $bookTitle }
+      # ZMIANA: title_IN zamiast title
+      where: { title_IN: [$bookTitle] }
       update: {
         currentBorrower: {
           connect: [
             { 
-              where: { node: { username: $username } } 
+              # ZMIANA: username_IN zamiast username
+              where: { node: { username_IN: [$username] } } 
             }
           ]
         }
@@ -58,16 +59,17 @@ const BORROW_BOOK = gql`
   }
 `;
 
-// POPRAWKA: Usunięto "{ equals: ... }"
 const RETURN_BOOK = gql`
   mutation Return($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: $bookTitle }
+      # ZMIANA: title_IN zamiast title
+      where: { title_IN: [$bookTitle] }
       update: {
         currentBorrower: {
           disconnect: [
             { 
-              where: { node: { username: $username } } 
+              # ZMIANA: username_IN zamiast username
+              where: { node: { username_IN: [$username] } } 
             }
           ]
         }
@@ -97,7 +99,7 @@ function App() {
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Wypożyczono książkę (dodano krawędź).");
+            alert("Sukces! Wypożyczono książkę.");
             setSelectedBook(null);
         },
         onError: (err) => alert("Błąd wypożyczania: " + err.message)
@@ -106,7 +108,7 @@ function App() {
     const [returnBook] = useMutation(RETURN_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Sukces! Zwrócono książkę (usunięto krawędź).");
+            alert("Sukces! Zwrócono książkę.");
             setSelectedBook(null);
         },
         onError: (err) => alert("Błąd zwrotu: " + err.message)
