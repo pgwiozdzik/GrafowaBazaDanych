@@ -16,7 +16,6 @@ const typeDefs = `
     rating: Int!
     text: String
     authorName: String
-    # ZMIANA: Dodano nawiasy kwadratowe [Book!]!
     book: [Book!]! @relationship(type: "HAS_REVIEW", direction: OUT)
   }
 
@@ -40,11 +39,10 @@ const typeDefs = `
     genres: [Genre!]! @relationship(type: "BELONGS_TO", direction: OUT)
     reviews: [Review!]! @relationship(type: "HAS_REVIEW", direction: IN)
     
-    # ZMIANA: Dodano nawiasy kwadratowe [User!]
-    currentBorrower: [User!] @relationship(type: "BORROWED", direction: IN)
+    # POPRAWKA TUTAJ: Dodano wykrzyknik na końcu [User!]!
+    currentBorrower: [User!]! @relationship(type: "BORROWED", direction: IN)
   }
 `;
-
 
 const driver = neo4j.driver(
     process.env.NEO4J_URI,
