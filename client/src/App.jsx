@@ -3,17 +3,18 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 
 const GET_BOOKS_ADVANCED = gql`
-  query GetBooksAdvanced($searchTerm: String!, $searchYear: Int, $hasYear: Boolean!) {
+  # Usunąłem $hasYear, bo nie jest już potrzebne
+  query GetBooksAdvanced($searchTerm: String!, $searchYear: Int!) {
     books(
       where: {
         OR: [
           { title_CONTAINS: $searchTerm },
           { author_SOME: { name_CONTAINS: $searchTerm } },
           { genres_SOME: { name_CONTAINS: $searchTerm } },
-          # ZMIANA TUTAJ:
-          # Zamiast "{ year: $searchYear }"
-          # Piszemy "{ year: { equals: $searchYear } }"
-          { year: { equals: $searchYear } } @include(if: $hasYear)
+          # ZMIANA: Usunięto @include. Zostaje czysty warunek.
+          # Jeśli rok będzie -1, to po prostu nic nie znajdzie w tym konkretnym warunku,
+          # ale pozostałe warunki (tytuł, autor) nadal będą działać.
+          { year: { equals: $searchYear } }
         ]
       }
     ) {
@@ -42,15 +43,18 @@ function App() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
-    // LOGIKA ROKU (Bez zmian):
+    // LOGIKA ROKU:
+    // 1. Sprawdzamy czy wpisano same cyfry
     const isNumeric = /^\d+$/.test(searchTerm) && searchTerm.length > 0;
-    const searchYear = isNumeric ? parseInt(searchTerm, 10) : 0;
+
+    // 2. Jeśli wpisano liczby -> szukamy tego roku.
+    // 3. Jeśli wpisano tekst -> szukamy roku -1 (bezpieczna wartość, która nic nie zepsuje)
+    const searchYear = isNumeric ? parseInt(searchTerm, 10) : -1;
 
     const { loading, error, data } = useQuery(GET_BOOKS_ADVANCED, {
         variables: {
             searchTerm: searchTerm,
-            searchYear: searchYear,
-            hasYear: isNumeric
+            searchYear: searchYear
         }
     });
 
@@ -79,7 +83,6 @@ function App() {
             {error && (
                 <div style={{color: 'red', textAlign: 'center', padding: '20px', background: '#fff0f0', borderRadius: '8px'}}>
                     <strong>Wystąpił błąd:</strong> {error.message}
-                    <br/><small>(Sprawdź szczegóły w konsoli)</small>
                 </div>
             )}
 
