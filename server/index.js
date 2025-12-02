@@ -45,24 +45,22 @@ const typeDefs = `
     currentBorrower: User @relationship(type: "BORROWED", direction: IN)
   }
 `;
-// 2. Konfiguracja połączenia
 const driver = neo4j.driver(
     process.env.NEO4J_URI,
     neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD)
 );
 
-// Funkcja startująca serwer
 async function startServer() {
     try {
         const neoSchema = new Neo4jGraphQL({ typeDefs, driver });
         const schema = await neoSchema.getSchema();
 
-        // ZMIANA TUTAJ: Dodajemy konfigurację CORS
         const server = new ApolloServer({
             schema,
+            // CORS zostawiamy włączony
             cors: {
-                origin: "*",        // Pozwól na dostęp zewsząd
-                credentials: true   // Pozwól na przesyłanie nagłówków
+                origin: "*",
+                credentials: true
             }
         });
 
@@ -71,14 +69,7 @@ async function startServer() {
         console.log(`🚀 Serwer gotowy pod adresem ${url}`);
 
     } catch (error) {
-        console.error("❌ BŁĄD KRYTYCZNY STARTU SERWERA:");
-        if (Array.isArray(error)) {
-            error.forEach((e, index) => {
-                console.error(`Błąd #${index + 1}:`, JSON.stringify(e, null, 2));
-            });
-        } else {
-            console.error(JSON.stringify(error, null, 2));
-        }
+        console.error("❌ BŁĄD KRYTYCZNY STARTU SERWERA:", error);
     }
 }
 
