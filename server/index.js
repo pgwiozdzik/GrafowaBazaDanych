@@ -6,6 +6,19 @@ const neo4j = require('neo4j-driver');
 // 1. Definicja Modelu
 // ZMIANA: Dodano "@node" do każdego typu, aby naprawić błąd w nowej wersji biblioteki
 const typeDefs = `
+  type User @node {
+    username: String!
+    borrowedBooks: [Book!]! @relationship(type: "BORROWED", direction: OUT)
+  }
+
+  type Review @node {
+    rating: Int!
+    text: String
+    authorName: String
+    # Krawędź: Recenzja DOTYCZY Książki
+    book: Book! @relationship(type: "HAS_REVIEW", direction: OUT)
+  }
+
   type Author @node {
     name: String!
     books: [Book!]! @relationship(type: "WROTE", direction: OUT)
@@ -19,11 +32,19 @@ const typeDefs = `
   type Book @node {
     title: String!
     year: Int
+    isbn: String
+    description: String
+    
     author: [Author!]! @relationship(type: "WROTE", direction: IN)
     genres: [Genre!]! @relationship(type: "BELONGS_TO", direction: OUT)
+    
+    # Nowe relacje:
+    reviews: [Review!]! @relationship(type: "HAS_REVIEW", direction: IN)
+    
+    # Jeśli ta relacja istnieje, książka jest niedostępna!
+    currentBorrower: User @relationship(type: "BORROWED", direction: IN)
   }
 `;
-
 // 2. Konfiguracja połączenia
 const driver = neo4j.driver(
     process.env.NEO4J_URI,
