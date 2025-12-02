@@ -3,14 +3,17 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 
 const GET_BOOKS_ADVANCED = gql`
-  query GetBooksAdvanced($searchTerm: String!, $searchYear: Int) {
+  query GetBooksAdvanced($searchTerm: String!, $searchYear: Int, $hasYear: Boolean!) {
     books(
       where: {
         OR: [
           { title_CONTAINS: $searchTerm },
           { author_SOME: { name_CONTAINS: $searchTerm } },
           { genres_SOME: { name_CONTAINS: $searchTerm } },
-          { year: $searchYear }
+          # ZMIANA TUTAJ:
+          # Zamiast "{ year: $searchYear }"
+          # Piszemy "{ year: { equals: $searchYear } }"
+          { year: { equals: $searchYear } } @include(if: $hasYear)
         ]
       }
     ) {
@@ -39,18 +42,15 @@ function App() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
-    // --- NAPRAWA BŁĘDU 400 ---
-    // Sprawdzamy, czy wpisany tekst to same cyfry
-    const isNumeric = /^\d+$/.test(searchTerm);
-
-    // Jeśli to liczby -> parsujemy na Int.
-    // Jeśli tekst -> wysyłamy null (GraphQL zignoruje wtedy filtr roku)
-    const searchYear = isNumeric ? parseInt(searchTerm, 10) : null;
+    // LOGIKA ROKU (Bez zmian):
+    const isNumeric = /^\d+$/.test(searchTerm) && searchTerm.length > 0;
+    const searchYear = isNumeric ? parseInt(searchTerm, 10) : 0;
 
     const { loading, error, data } = useQuery(GET_BOOKS_ADVANCED, {
         variables: {
             searchTerm: searchTerm,
-            searchYear: searchYear
+            searchYear: searchYear,
+            hasYear: isNumeric
         }
     });
 
@@ -76,10 +76,10 @@ function App() {
 
             {loading && <p style={{textAlign: 'center'}}>Przeszukiwanie grafu...</p>}
 
-            {/* Wyświetlamy błąd ładniej */}
             {error && (
                 <div style={{color: 'red', textAlign: 'center', padding: '20px', background: '#fff0f0', borderRadius: '8px'}}>
                     <strong>Wystąpił błąd:</strong> {error.message}
+                    <br/><small>(Sprawdź szczegóły w konsoli)</small>
                 </div>
             )}
 
