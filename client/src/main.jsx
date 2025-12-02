@@ -1,16 +1,25 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-// Klient i Cache są w Core (główny import)
+
+// Importujemy główne elementy z Core
 import { ApolloClient, InMemoryCache } from '@apollo/client';
-// Provider to komponent Reactowy -> importujemy z /react
+// Importujemy Provider z Reacta
 import { ApolloProvider } from '@apollo/client/react';
-// Logika: Jeśli jesteśmy na produkcji (Railway), użyj zmiennej środowiskowej.
-// Jeśli testujesz u siebie lokalnie, użyj localhost.
+// Importujemy Link HTTP z odpowiedniego podkatalogu (zgodnie z package.json)
+import { HttpLink } from '@apollo/client/link/http';
+
+// Pobieramy adres API (z Railway lub localhost)
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/';
 
-const client = new ApolloClient({
+// Tworzymy Link ręcznie
+const httpLink = new HttpLink({
     uri: apiUrl,
+});
+
+const client = new ApolloClient({
+    // Zamiast "uri: apiUrl", dajemy "link: httpLink"
+    link: httpLink,
     cache: new InMemoryCache(),
 });
 
