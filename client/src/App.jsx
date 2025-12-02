@@ -3,7 +3,6 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 
 const GET_BOOKS_ADVANCED = gql`
-  # Usunąłem $hasYear, bo nie jest już potrzebne
   query GetBooksAdvanced($searchTerm: String!, $searchYear: Int!) {
     books(
       where: {
@@ -11,10 +10,11 @@ const GET_BOOKS_ADVANCED = gql`
           { title_CONTAINS: $searchTerm },
           { author_SOME: { name_CONTAINS: $searchTerm } },
           { genres_SOME: { name_CONTAINS: $searchTerm } },
-          # ZMIANA: Usunięto @include. Zostaje czysty warunek.
-          # Jeśli rok będzie -1, to po prostu nic nie znajdzie w tym konkretnym warunku,
-          # ale pozostałe warunki (tytuł, autor) nadal będą działać.
-          { year: { equals: $searchYear } }
+          # OSTATECZNA POPRAWKA:
+          # Używamy year_IN (czy rok jest w liście).
+          # Przekazujemy tablicę jednoelementową [$searchYear].
+          # To działa jak "equals", ale jest wspierane przez każdą wersję biblioteki.
+          { year_IN: [$searchYear] }
         ]
       }
     ) {
@@ -44,11 +44,8 @@ function App() {
     const [selectedBook, setSelectedBook] = useState(null);
 
     // LOGIKA ROKU:
-    // 1. Sprawdzamy czy wpisano same cyfry
     const isNumeric = /^\d+$/.test(searchTerm) && searchTerm.length > 0;
-
-    // 2. Jeśli wpisano liczby -> szukamy tego roku.
-    // 3. Jeśli wpisano tekst -> szukamy roku -1 (bezpieczna wartość, która nic nie zepsuje)
+    // Jeśli liczba -> szukamy roku. Jeśli tekst -> -1 (nieistniejący rok)
     const searchYear = isNumeric ? parseInt(searchTerm, 10) : -1;
 
     const { loading, error, data } = useQuery(GET_BOOKS_ADVANCED, {
@@ -83,6 +80,7 @@ function App() {
             {error && (
                 <div style={{color: 'red', textAlign: 'center', padding: '20px', background: '#fff0f0', borderRadius: '8px'}}>
                     <strong>Wystąpił błąd:</strong> {error.message}
+                    <br/><small>(Sprawdź szczegóły w konsoli)</small>
                 </div>
             )}
 
