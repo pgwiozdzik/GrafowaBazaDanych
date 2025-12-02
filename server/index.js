@@ -56,6 +56,7 @@ async function startServer() {
 
         const server = new ApolloServer({
             schema,
+            cache: "bounded",
             // CORS zostawiamy włączony
             cors: {
                 origin: "*",

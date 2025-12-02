@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 
-// ZAAWANSOWANE ZAPYTANIE
-// Dodaliśmy zmienną $searchYear (Int)
 const GET_BOOKS_ADVANCED = gql`
   query GetBooksAdvanced($searchTerm: String!, $searchYear: Int) {
     books(
@@ -12,7 +10,6 @@ const GET_BOOKS_ADVANCED = gql`
           { title_CONTAINS: $searchTerm },
           { author_SOME: { name_CONTAINS: $searchTerm } },
           { genres_SOME: { name_CONTAINS: $searchTerm } },
-          # Nowy warunek: szukaj po roku
           { year: $searchYear }
         ]
       }
@@ -42,12 +39,13 @@ function App() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
-    // LOGIKA ROKU:
-    // Próbujemy zamienić tekst na liczbę.
-    // Jeśli się uda (np. wpisano "1993") -> szukamy roku 1993.
-    // Jeśli się nie uda (wpisano "Wiedźmin") -> szukamy roku -1 (który nie istnieje, więc ten warunek jest pomijany).
-    const parsedYear = parseInt(searchTerm);
-    const searchYear = isNaN(parsedYear) ? -1 : parsedYear;
+    // --- NAPRAWA BŁĘDU 400 ---
+    // Sprawdzamy, czy wpisany tekst to same cyfry
+    const isNumeric = /^\d+$/.test(searchTerm);
+
+    // Jeśli to liczby -> parsujemy na Int.
+    // Jeśli tekst -> wysyłamy null (GraphQL zignoruje wtedy filtr roku)
+    const searchYear = isNumeric ? parseInt(searchTerm, 10) : null;
 
     const { loading, error, data } = useQuery(GET_BOOKS_ADVANCED, {
         variables: {
@@ -61,12 +59,10 @@ function App() {
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
 
-            {/* NAGŁÓWEK */}
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h1 style={{ color: '#2c3e50' }}>🔎 Biblioteka Grafowa</h1>
                 <input
                     type="text"
-                    // Zmieniliśmy placeholder, żeby informował o roku
                     placeholder="Szukaj po tytule, autorze, gatunku lub roku..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -78,9 +74,14 @@ function App() {
                 <p style={{ fontSize: '0.9em', color: '#666' }}>Kliknij w książkę, aby zobaczyć szczegóły</p>
             </div>
 
-            {/* LISTA WYNIKÓW */}
             {loading && <p style={{textAlign: 'center'}}>Przeszukiwanie grafu...</p>}
-            {error && <p style={{color: 'red', textAlign: 'center'}}>Błąd: {error.message}</p>}
+
+            {/* Wyświetlamy błąd ładniej */}
+            {error && (
+                <div style={{color: 'red', textAlign: 'center', padding: '20px', background: '#fff0f0', borderRadius: '8px'}}>
+                    <strong>Wystąpił błąd:</strong> {error.message}
+                </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
                 {data && data.books.map((book, index) => (
@@ -89,8 +90,7 @@ function App() {
                         onClick={() => setSelectedBook(book)}
                         style={{
                             border: '1px solid #ddd', borderRadius: '10px', padding: '20px',
-                            cursor: 'pointer',
-                            background: 'white', transition: 'transform 0.2s',
+                            cursor: 'pointer', background: 'white', transition: 'transform 0.2s',
                             boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative'
                         }}
                         onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -120,65 +120,41 @@ function App() {
                 ))}
             </div>
 
-            {/* MODAL */}
             {selectedBook && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
                     background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
                 }} onClick={() => setSelectedBook(null)}>
-
                     <div style={{
                         background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '500px', width: '90%',
                         position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
                     }} onClick={e => e.stopPropagation()}>
-
-                        <button
-                            onClick={() => setSelectedBook(null)}
-                            style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'transparent', fontSize: '24px', cursor: 'pointer', fontWeight: 'bold' }}
-                        >✖</button>
-
-                        <h2 style={{ marginTop: 0, paddingRight: '30px' }}>{selectedBook.title}</h2>
-
+                        <button onClick={() => setSelectedBook(null)} style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'transparent', fontSize: '24px', cursor: 'pointer' }}>✖</button>
+                        <h2 style={{ marginTop: 0 }}>{selectedBook.title}</h2>
                         <div style={{ margin: '20px 0', padding: '15px', background: isAvailable(selectedBook) ? '#e6fffa' : '#fff5f5', borderRadius: '8px' }}>
                             <strong>Status: </strong>
                             {isAvailable(selectedBook)
-                                ? <span style={{ color: 'green', fontWeight: 'bold' }}>Dostępna do wypożyczenia</span>
-                                : <span style={{ color: 'red', fontWeight: 'bold' }}>
-                    Wypożyczona przez: {selectedBook.currentBorrower[0]?.username}
-                  </span>
+                                ? <span style={{ color: 'green', fontWeight: 'bold' }}>Dostępna</span>
+                                : <span style={{ color: 'red', fontWeight: 'bold' }}>Wypożyczona przez: {selectedBook.currentBorrower[0]?.username}</span>
                             }
                         </div>
-
                         <p><strong>Autor:</strong> {selectedBook.author.map(a => a.name).join(', ')}</p>
-                        <p><strong>Gatunki:</strong> {selectedBook.genres.map(g => g.name).join(', ')}</p>
-                        <p><strong>Rok wydania:</strong> {selectedBook.year}</p>
+                        <p><strong>Rok:</strong> {selectedBook.year}</p>
                         <p><strong>Opis:</strong> {selectedBook.description || "Brak opisu."}</p>
-
                         <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #eee' }} />
-
                         <h3>⭐ Recenzje ({selectedBook.reviews.length})</h3>
-                        {selectedBook.reviews.length === 0 ? (
-                            <p style={{ color: '#999', fontStyle: 'italic' }}>Brak recenzji dla tej pozycji.</p>
-                        ) : (
-                            <ul style={{ listStyle: 'none', padding: 0, maxHeight: '200px', overflowY: 'auto' }}>
-                                {selectedBook.reviews.map((rev, i) => (
-                                    <li key={i} style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #f0f0f0' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <strong>{rev.authorName || "Anonim"}</strong>
-                                            <span style={{ color: '#f1c40f' }}>{'★'.repeat(rev.rating)}</span>
-                                        </div>
-                                        <p style={{ margin: '0', fontSize: '0.95em', color: '#444' }}>{rev.text}</p>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-
-                        <button
-                            onClick={() => setSelectedBook(null)}
-                            style={{ width: '100%', padding: '12px', marginTop: '15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
-                        >
-                            Zamknij
-                        </button>
+                        <ul style={{ listStyle: 'none', padding: 0, maxHeight: '200px', overflowY: 'auto' }}>
+                            {selectedBook.reviews.map((rev, i) => (
+                                <li key={i} style={{ marginBottom: '15px', borderBottom: '1px solid #f0f0f0' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <strong>{rev.authorName || "Anonim"}</strong>
+                                        <span style={{ color: '#f1c40f' }}>{'★'.repeat(rev.rating)}</span>
+                                    </div>
+                                    <p>{rev.text}</p>
+                                </li>
+                            ))}
+                        </ul>
+                        <button onClick={() => setSelectedBook(null)} style={{ width: '100%', padding: '12px', marginTop: '15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Zamknij</button>
                     </div>
                 </div>
             )}
