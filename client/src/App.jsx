@@ -28,7 +28,7 @@ const GET_BOOKS_ADVANCED = gql`
   }
 `;
 
-// --- MUTACJE (ZMIANY W GRAFIE) ---
+// --- MUTACJE (POPRAWIONE DLA WERSJI v4+) ---
 
 const REGISTER_USER = gql`
   mutation Register($username: String!) {
@@ -38,17 +38,21 @@ const REGISTER_USER = gql`
   }
 `;
 
-// POPRAWKA: Dodano nawiasy kwadratowe [ ] wewnątrz connect
+// POPRAWKA:
+// 1. "where" używa { equals: ... }
+// 2. "connect" jest teraz wewnątrz obiektu "update" -> "currentBorrower"
 const BORROW_BOOK = gql`
   mutation Borrow($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: $bookTitle }
-      connect: { 
-        currentBorrower: [
-          { 
-            where: { node: { username: $username } } 
-          }
-        ]
+      where: { title: { equals: $bookTitle } }
+      update: {
+        currentBorrower: {
+          connect: [
+            { 
+              where: { node: { username: { equals: $username } } } 
+            }
+          ]
+        }
       }
     ) {
       books { title }
@@ -56,17 +60,21 @@ const BORROW_BOOK = gql`
   }
 `;
 
-// POPRAWKA: Dodano nawiasy kwadratowe [ ] wewnątrz disconnect
+// POPRAWKA:
+// 1. "where" używa { equals: ... }
+// 2. "disconnect" jest wewnątrz obiektu "update"
 const RETURN_BOOK = gql`
   mutation Return($bookTitle: String!, $username: String!) {
     updateBooks(
-      where: { title: $bookTitle }
-      disconnect: { 
-        currentBorrower: [
-          { 
-            where: { node: { username: $username } } 
-          }
-        ]
+      where: { title: { equals: $bookTitle } }
+      update: {
+        currentBorrower: {
+          disconnect: [
+            { 
+              where: { node: { username: { equals: $username } } } 
+            }
+          ]
+        }
       }
     ) {
       books { title }
@@ -89,10 +97,12 @@ function App() {
     });
 
     const [registerUser] = useMutation(REGISTER_USER);
+
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Wypożyczono pomyślnie!");
+            alert("Sukces! Wypożyczono książkę (dodano krawędź w grafie).");
+            setSelectedBook(null); // Zamykamy modal po sukcesie
         },
         onError: (err) => alert("Błąd wypożyczania: " + err.message)
     });
@@ -100,7 +110,8 @@ function App() {
     const [returnBook] = useMutation(RETURN_BOOK, {
         onCompleted: () => {
             refetch();
-            alert("Zwrócono pomyślnie!");
+            alert("Sukces! Zwrócono książkę (usunięto krawędź z grafu).");
+            setSelectedBook(null);
         },
         onError: (err) => alert("Błąd zwrotu: " + err.message)
     });
@@ -122,19 +133,16 @@ function App() {
         await borrowBook({
             variables: { bookTitle: selectedBook.title, username: currentUser }
         });
-        // Zamknięcie modala nastąpi po sukcesie lub ręcznie
-        setSelectedBook(null);
     };
 
     const handleReturn = async () => {
         await returnBook({
             variables: { bookTitle: selectedBook.title, username: currentUser }
         });
-        setSelectedBook(null);
     };
 
     const isAvailable = (book) => !book.currentBorrower || book.currentBorrower.length === 0;
-    const isBorrowedByMe = (book) => book.currentBorrower.some(u => u.username === currentUser);
+    const isBorrowedByMe = (book) => book.currentBorrower && book.currentBorrower.some(u => u.username === currentUser);
 
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
