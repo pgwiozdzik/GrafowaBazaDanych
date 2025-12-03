@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
+// IMPORTY ROUTERA
+import { Routes, Route, Link } from 'react-router-dom';
+import Documentation from './Documentation'; // Import podstrony
 
+// --- ZAPYTANIA I MUTACJE (BEZ ZMIAN) ---
 const GET_BOOKS_ADVANCED = gql`
   query GetBooksAdvanced($searchTerm: String!, $searchYear: Int!) {
     books(
@@ -93,7 +97,8 @@ const DELETE_BOOK = gql`
   }
 `;
 
-function App() {
+// --- GŁÓWNY WIDOK BIBLIOTEKI (To co było wcześniej w App) ---
+function LibraryView() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
@@ -109,29 +114,17 @@ function App() {
     });
 
     const [registerUser] = useMutation(REGISTER_USER);
-
     const [createBookMutation, { loading: isCreating }] = useMutation(CREATE_BOOK, {
-        onCompleted: () => {
-            refetch();
-            setShowAddForm(false);
-            alert("Dodano nową pozycję do katalogu.");
-        },
+        onCompleted: () => { refetch(); setShowAddForm(false); alert("Dodano nową pozycję do katalogu."); },
         onError: (err) => alert(err.message)
     });
-
     const [deleteBookMutation, { loading: isDeleting }] = useMutation(DELETE_BOOK, {
-        onCompleted: () => {
-            refetch();
-            alert("Pozycja została usunięta.");
-            setSelectedBook(null);
-        }
+        onCompleted: () => { refetch(); alert("Pozycja została usunięta."); setSelectedBook(null); }
     });
-
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => { refetch(); alert("Zarejestrowano wypożyczenie."); setSelectedBook(null); },
         onError: (err) => alert(err.message)
     });
-
     const [returnBook] = useMutation(RETURN_BOOK, {
         onCompleted: () => { refetch(); alert("Zarejestrowano zwrot."); setSelectedBook(null); },
         onError: (err) => alert(err.message)
@@ -158,7 +151,6 @@ function App() {
     const handleCreateBook = async (e) => {
         e.preventDefault();
         if (isCreating) return;
-
         if (!newBook.title || !newBook.author) return alert("Tytuł i autor są wymagane.");
         await createBookMutation({
             variables: {
@@ -175,7 +167,6 @@ function App() {
     const handleDeleteBook = async (title) => {
         if (isDeleting) return;
         if (!currentUser) return alert("Wymagane uprawnienia.");
-
         if (window.confirm(`Czy na pewno usunąć "${title}" z bazy danych?`)) {
             await deleteBookMutation({ variables: { title } });
         }
@@ -187,28 +178,24 @@ function App() {
     return (
         <div style={{ fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif', color: '#333', background: '#fdfdfd', minHeight: '100vh' }}>
 
-            {/* NOWY PASEK INFORMACYJNY (GÓRA STRONY) */}
+            {/* HEADER */}
             <header style={{ backgroundColor: '#2c3e50', color: '#ecf0f1', padding: '15px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
                 <div style={{ fontSize: '14px', lineHeight: '1.5' }}>
-                    {/* --- WPISZ SWOJE DANE TUTAJ --- */}
-                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>Jan Kowalski</div>
-                    <div style={{ color: '#bdc3c7' }}>Chmury Obliczeniowe • Informatyka • Rok III</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>Piotr Gwioździk</div>
+                    <div style={{ color: '#bdc3c7' }}>Przetwarzanie danych w chmurach obliczeniowych • Informatyka Stosowana • 2025</div>
                 </div>
 
-                {/* --- WPISZ LINK DO DOKUMENTACJI TUTAJ --- */}
-                <a
-                    href="https://github.com/TwojLogin/TwojProjekt"
-                    target="_blank"
-                    rel="noreferrer"
+                {/* LINK DO DOKUMENTACJI (ROUTER LINK) */}
+                <Link
+                    to="/docs"
                     style={{ background: 'rgba(255,255,255,0.1)', color: 'white', textDecoration: 'none', padding: '8px 16px', borderRadius: '4px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.2)', transition: 'background 0.2s' }}
                     onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
                     onMouseOut={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
                 >
                     Dokumentacja Projektu
-                </a>
+                </Link>
             </header>
 
-            {/* GŁÓWNY KONTENER APLIKACJI */}
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px' }}>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingBottom: '20px', borderBottom: '1px solid #eee' }}>
@@ -416,6 +403,16 @@ function App() {
                 )}
             </div>
         </div>
+    );
+}
+
+// --- KOMPONENT APP Z ROUTINGIEM ---
+function App() {
+    return (
+        <Routes>
+            <Route path="/" element={<LibraryView />} />
+            <Route path="/docs" element={<Documentation />} />
+        </Routes>
     );
 }
 
