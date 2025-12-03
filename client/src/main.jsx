@@ -1,9 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-// Dodajemy BrowserRouter
 import { BrowserRouter } from 'react-router-dom';
-import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+
+// POPRAWKA IMPORTÓW DLA APOLLO CLIENT v4
+import { ApolloClient, InMemoryCache } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import { HttpLink } from '@apollo/client/link/http';
 
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/';
@@ -20,7 +22,6 @@ const client = new ApolloClient({
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <ApolloProvider client={client}>
-            {/* OWIJAMY W ROUTER */}
             <BrowserRouter>
                 <App />
             </BrowserRouter>

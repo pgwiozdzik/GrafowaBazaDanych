@@ -5,7 +5,6 @@ function Documentation() {
     return (
         <div style={{ fontFamily: '"Segoe UI", sans-serif', maxWidth: '800px', margin: '0 auto', padding: '40px', lineHeight: '1.6', color: '#333' }}>
 
-            {/* Przycisk powrotu */}
             <div style={{ marginBottom: '30px' }}>
                 <Link to="/" style={{ textDecoration: 'none', color: '#2980b9', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     ← Wróć do aplikacji
@@ -39,11 +38,12 @@ function Documentation() {
             <section style={{ marginBottom: '40px' }}>
                 <h2 style={{ color: '#2c3e50', borderLeft: '4px solid #3498db', paddingLeft: '15px' }}>3. Model Danych (Węzły i Krawędzie)</h2>
                 <p>W bazie danych nie występują tabele. Dane są reprezentowane jako graf:</p>
+                {/* ZMIANA: Użycie bezpiecznych stringów dla strzałek */}
                 <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #e1e4e8', fontFamily: 'monospace' }}>
-                    (:User)-[:BORROWED]->(:Book)<br/>
-                    (:Author)-[:WROTE]->(:Book)<br/>
-                    (:Book)-[:BELONGS_TO]->(:Genre)<br/>
-                    (:Review)-[:HAS_REVIEW]->(:Book)
+                    {"(:User)-[:BORROWED]->(:Book)"}<br/>
+                    {"(:Author)-[:WROTE]->(:Book)"}<br/>
+                    {"(:Book)-[:BELONGS_TO]->(:Genre)"}<br/>
+                    {"(:Review)-[:HAS_REVIEW]->(:Book)"}
                 </div>
                 <p style={{ marginTop: '15px' }}>
                     Kluczową cechą jest relacja <strong>BORROWED</strong>. Dostępność książki nie jest atrybutem węzła (kolumną),
