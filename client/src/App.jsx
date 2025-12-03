@@ -68,8 +68,6 @@ const RETURN_BOOK = gql`
   }
 `;
 
-// NOWOŚĆ: TWORZENIE KSIĄŻKI
-// Tworzymy książkę oraz od razu tworzymy (lub łączymy) Autora i Gatunek
 const CREATE_BOOK = gql`
   mutation CreateBook($title: String!, $year: Int!, $desc: String!, $author: String!, $genre: String!) {
     createBooks(input: [
@@ -90,7 +88,6 @@ const CREATE_BOOK = gql`
   }
 `;
 
-// NOWOŚĆ: USUWANIE KSIĄŻKI
 const DELETE_BOOK = gql`
   mutation DeleteBook($title: String!) {
     deleteBooks(where: { title_IN: [$title] }) {
@@ -104,11 +101,9 @@ function App() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBook, setSelectedBook] = useState(null);
 
-    // Auth
     const [currentUser, setCurrentUser] = useState(null);
     const [usernameInput, setUsernameInput] = useState("");
 
-    // Formularz dodawania
     const [showAddForm, setShowAddForm] = useState(false);
     const [newBook, setNewBook] = useState({ title: "", author: "", year: "", genre: "", desc: "" });
 
@@ -120,8 +115,22 @@ function App() {
     });
 
     const [registerUser] = useMutation(REGISTER_USER);
-    const [createBookMutation] = useMutation(CREATE_BOOK, { onCompleted: () => { refetch(); setShowAddForm(false); alert("Dodano książkę!"); } });
-    const [deleteBookMutation] = useMutation(DELETE_BOOK, { onCompleted: () => { refetch(); alert("Usunięto książkę!"); } });
+
+    // POPRAWKA: Wyciągamy 'loading' jako 'isCreating'
+    // Dzięki temu wiemy, kiedy trwa wysyłanie danych do serwera
+    const [createBookMutation, { loading: isCreating }] = useMutation(CREATE_BOOK, {
+        onCompleted: () => {
+            refetch();
+            setShowAddForm(false);
+            alert("Dodano książkę!");
+        },
+        onError: (err) => alert("Błąd dodawania: " + err.message)
+    });
+
+    // Tutaj też wyciągamy stan usuwania, żeby zablokować kosz
+    const [deleteBookMutation, { loading: isDeleting }] = useMutation(DELETE_BOOK, {
+        onCompleted: () => { refetch(); alert("Usunięto książkę!"); }
+    });
 
     const [borrowBook] = useMutation(BORROW_BOOK, {
         onCompleted: () => { refetch(); alert("Wypożyczono!"); setSelectedBook(null); },
@@ -133,7 +142,6 @@ function App() {
         onError: (err) => alert("Błąd: " + err.message)
     });
 
-    // Handlery
     const handleLogin = async (e) => {
         e.preventDefault();
         if (!usernameInput) return;
@@ -155,6 +163,9 @@ function App() {
 
     const handleCreateBook = async (e) => {
         e.preventDefault();
+        // Dodatkowe zabezpieczenie: jeśli już wysyłamy, ignoruj kliknięcia
+        if (isCreating) return;
+
         if (!newBook.title || !newBook.author) return alert("Wypełnij tytuł i autora");
         await createBookMutation({
             variables: {
@@ -169,7 +180,8 @@ function App() {
     };
 
     const handleDeleteBook = async (e, title) => {
-        e.stopPropagation(); // Żeby nie otwierać modala przy kliknięciu w kosz
+        e.stopPropagation();
+        if (isDeleting) return; // Zabezpieczenie usuwania
         if (!currentUser) return alert("Zaloguj się, aby usuwać!");
         if (window.confirm(`Czy na pewno usunąć książkę "${title}"?`)) {
             await deleteBookMutation({ variables: { title } });
@@ -204,17 +216,33 @@ function App() {
                 )}
             </div>
 
-            {/* FORMULARZ DODAWANIA (Widoczny po kliknięciu przycisku) */}
+            {/* FORMULARZ DODAWANIA */}
             {showAddForm && (
                 <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px', marginBottom: '30px', border: '2px solid #6c5ce7' }}>
                     <h3>Nowa Książka</h3>
                     <form onSubmit={handleCreateBook} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <input placeholder="Tytuł" value={newBook.title} onChange={e => setNewBook({...newBook, title: e.target.value})} style={{ padding: '8px' }} required />
-                        <input placeholder="Autor" value={newBook.author} onChange={e => setNewBook({...newBook, author: e.target.value})} style={{ padding: '8px' }} required />
-                        <input placeholder="Gatunek" value={newBook.genre} onChange={e => setNewBook({...newBook, genre: e.target.value})} style={{ padding: '8px' }} />
-                        <input placeholder="Rok" type="number" value={newBook.year} onChange={e => setNewBook({...newBook, year: e.target.value})} style={{ padding: '8px' }} />
-                        <input placeholder="Krótki opis" value={newBook.desc} onChange={e => setNewBook({...newBook, desc: e.target.value})} style={{ gridColumn: '1 / -1', padding: '8px' }} />
-                        <button type="submit" style={{ gridColumn: '1 / -1', padding: '10px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Zapisz w Grafie</button>
+                        <input placeholder="Tytuł" value={newBook.title} onChange={e => setNewBook({...newBook, title: e.target.value})} style={{ padding: '8px' }} required disabled={isCreating} />
+                        <input placeholder="Autor" value={newBook.author} onChange={e => setNewBook({...newBook, author: e.target.value})} style={{ padding: '8px' }} required disabled={isCreating} />
+                        <input placeholder="Gatunek" value={newBook.genre} onChange={e => setNewBook({...newBook, genre: e.target.value})} style={{ padding: '8px' }} disabled={isCreating} />
+                        <input placeholder="Rok" type="number" value={newBook.year} onChange={e => setNewBook({...newBook, year: e.target.value})} style={{ padding: '8px' }} disabled={isCreating} />
+                        <input placeholder="Krótki opis" value={newBook.desc} onChange={e => setNewBook({...newBook, desc: e.target.value})} style={{ gridColumn: '1 / -1', padding: '8px' }} disabled={isCreating} />
+
+                        {/* PRZYCISK ZAPISU - ZMIENIONY */}
+                        <button
+                            type="submit"
+                            disabled={isCreating} // Wyłącza przycisk
+                            style={{
+                                gridColumn: '1 / -1',
+                                padding: '10px',
+                                background: isCreating ? '#95a5a6' : '#27ae60', // Zmiana koloru na szary
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '5px',
+                                cursor: isCreating ? 'not-allowed' : 'pointer' // Kursor zakazu
+                            }}
+                        >
+                            {isCreating ? "⏳ Zapisywanie..." : "💾 Zapisz w Grafie"}
+                        </button>
                     </form>
                 </div>
             )}
@@ -242,11 +270,12 @@ function App() {
                         onClick={() => setSelectedBook(book)}
                         style={{ border: '1px solid #ddd', borderRadius: '10px', padding: '20px', cursor: 'pointer', background: 'white', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative' }}
                     >
-                        {/* Przycisk USUWANIA (tylko dla zalogowanych) */}
+                        {/* PRZYCISK USUWANIA - TEŻ ZABLOKOWANY PODCZAS AKCJI */}
                         {currentUser && (
                             <button
                                 onClick={(e) => handleDeleteBook(e, book.title)}
-                                style={{ position: 'absolute', bottom: '10px', right: '10px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                disabled={isDeleting}
+                                style={{ position: 'absolute', bottom: '10px', right: '10px', background: isDeleting ? '#ccc' : '#e74c3c', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 title="Usuń książkę"
                             >
                                 🗑️
@@ -270,6 +299,7 @@ function App() {
                         <button onClick={() => setSelectedBook(null)} style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'transparent', fontSize: '24px', cursor: 'pointer' }}>✖</button>
 
                         <h2 style={{ marginTop: 0 }}>{selectedBook.title}</h2>
+
                         <div style={{ margin: '20px 0', padding: '20px', background: isAvailable(selectedBook) ? '#e6fffa' : '#fff5f5', borderRadius: '8px', border: '1px solid #ddd' }}>
                             <strong>Status: </strong>
                             {isAvailable(selectedBook) ? <span style={{ color: 'green', fontWeight: 'bold' }}>Dostępna</span> : <span style={{ color: 'red', fontWeight: 'bold' }}>Wypożyczona</span>}
