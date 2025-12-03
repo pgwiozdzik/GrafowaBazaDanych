@@ -116,8 +116,6 @@ function App() {
 
     const [registerUser] = useMutation(REGISTER_USER);
 
-    // POPRAWKA: Wyciągamy 'loading' jako 'isCreating'
-    // Dzięki temu wiemy, kiedy trwa wysyłanie danych do serwera
     const [createBookMutation, { loading: isCreating }] = useMutation(CREATE_BOOK, {
         onCompleted: () => {
             refetch();
@@ -127,9 +125,13 @@ function App() {
         onError: (err) => alert("Błąd dodawania: " + err.message)
     });
 
-    // Tutaj też wyciągamy stan usuwania, żeby zablokować kosz
     const [deleteBookMutation, { loading: isDeleting }] = useMutation(DELETE_BOOK, {
-        onCompleted: () => { refetch(); alert("Usunięto książkę!"); }
+        onCompleted: () => {
+            refetch();
+            alert("Usunięto książkę!");
+            // Zamykamy modal po usunięciu, bo książka już nie istnieje
+            setSelectedBook(null);
+        }
     });
 
     const [borrowBook] = useMutation(BORROW_BOOK, {
@@ -163,7 +165,6 @@ function App() {
 
     const handleCreateBook = async (e) => {
         e.preventDefault();
-        // Dodatkowe zabezpieczenie: jeśli już wysyłamy, ignoruj kliknięcia
         if (isCreating) return;
 
         if (!newBook.title || !newBook.author) return alert("Wypełnij tytuł i autora");
@@ -179,11 +180,12 @@ function App() {
         setNewBook({ title: "", author: "", year: "", genre: "", desc: "" });
     };
 
-    const handleDeleteBook = async (e, title) => {
-        e.stopPropagation();
-        if (isDeleting) return; // Zabezpieczenie usuwania
+    // Zaktualizowana funkcja usuwania (nie potrzebuje już 'e')
+    const handleDeleteBook = async (title) => {
+        if (isDeleting) return;
         if (!currentUser) return alert("Zaloguj się, aby usuwać!");
-        if (window.confirm(`Czy na pewno usunąć książkę "${title}"?`)) {
+
+        if (window.confirm(`UWAGA: Czy na pewno chcesz usunąć książkę "${title}"? Ta operacja jest nieodwracalna.`)) {
             await deleteBookMutation({ variables: { title } });
         }
     };
@@ -226,20 +228,10 @@ function App() {
                         <input placeholder="Gatunek" value={newBook.genre} onChange={e => setNewBook({...newBook, genre: e.target.value})} style={{ padding: '8px' }} disabled={isCreating} />
                         <input placeholder="Rok" type="number" value={newBook.year} onChange={e => setNewBook({...newBook, year: e.target.value})} style={{ padding: '8px' }} disabled={isCreating} />
                         <input placeholder="Krótki opis" value={newBook.desc} onChange={e => setNewBook({...newBook, desc: e.target.value})} style={{ gridColumn: '1 / -1', padding: '8px' }} disabled={isCreating} />
-
-                        {/* PRZYCISK ZAPISU - ZMIENIONY */}
                         <button
                             type="submit"
-                            disabled={isCreating} // Wyłącza przycisk
-                            style={{
-                                gridColumn: '1 / -1',
-                                padding: '10px',
-                                background: isCreating ? '#95a5a6' : '#27ae60', // Zmiana koloru na szary
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '5px',
-                                cursor: isCreating ? 'not-allowed' : 'pointer' // Kursor zakazu
-                            }}
+                            disabled={isCreating}
+                            style={{ gridColumn: '1 / -1', padding: '10px', background: isCreating ? '#95a5a6' : '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: isCreating ? 'not-allowed' : 'pointer' }}
                         >
                             {isCreating ? "⏳ Zapisywanie..." : "💾 Zapisz w Grafie"}
                         </button>
@@ -270,17 +262,7 @@ function App() {
                         onClick={() => setSelectedBook(book)}
                         style={{ border: '1px solid #ddd', borderRadius: '10px', padding: '20px', cursor: 'pointer', background: 'white', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', position: 'relative' }}
                     >
-                        {/* PRZYCISK USUWANIA - TEŻ ZABLOKOWANY PODCZAS AKCJI */}
-                        {currentUser && (
-                            <button
-                                onClick={(e) => handleDeleteBook(e, book.title)}
-                                disabled={isDeleting}
-                                style={{ position: 'absolute', bottom: '10px', right: '10px', background: isDeleting ? '#ccc' : '#e74c3c', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                title="Usuń książkę"
-                            >
-                                🗑️
-                            </button>
-                        )}
+                        {/* USUNĄŁEM STĄD PRZYCISK USUWANIA */}
 
                         <div style={{ position: 'absolute', top: '10px', right: '10px', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', background: isAvailable(book) ? '#d4edda' : '#f8d7da', color: isAvailable(book) ? '#155724' : '#721c24' }}>
                             {isAvailable(book) ? 'DOSTĘPNA' : 'WYPOŻYCZONA'}
@@ -310,15 +292,33 @@ function App() {
                                 }
                             </div>
                         </div>
+
                         <p><strong>Autor:</strong> {selectedBook.author.map(a => a.name).join(', ')}</p>
                         <p><strong>Rok:</strong> {selectedBook.year}</p>
+                        <p><strong>Opis:</strong> {selectedBook.description || "Brak opisu"}</p>
+
                         <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c5ce7', marginTop: '20px' }}>
                             <h3 style={{ marginTop: 0, color: '#6c5ce7', fontSize: '1rem' }}>💡 Rekomendacje:</h3>
                             <ul style={{ paddingLeft: '20px', margin: 0 }}>
                                 {selectedBook.recommended.map((rec, i) => <li key={i}><strong>{rec.title}</strong></li>)}
                             </ul>
                         </div>
+
                         <button onClick={() => setSelectedBook(null)} style={{ width: '100%', padding: '12px', marginTop: '15px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Zamknij</button>
+
+                        {/* SEKCJA USUWANIA (tylko dla zalogowanych) */}
+                        {currentUser && (
+                            <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #eee' }}>
+                                <button
+                                    onClick={() => handleDeleteBook(selectedBook.title)}
+                                    disabled={isDeleting}
+                                    style={{ width: '100%', background: isDeleting ? '#e57373' : '#c0392b', color: 'white', padding: '10px', border: 'none', borderRadius: '6px', cursor: isDeleting ? 'not-allowed' : 'pointer' }}
+                                >
+                                    {isDeleting ? "🗑️ Usuwanie..." : "🗑️ Usuń tę książkę (Admin)"}
+                                </button>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             )}
