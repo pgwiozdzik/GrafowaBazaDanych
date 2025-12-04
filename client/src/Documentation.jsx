@@ -49,6 +49,13 @@ function Documentation() {
             marginTop: '30px',
             marginBottom: '15px'
         },
+        h4: {
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#2c3e50',
+            marginTop: '20px',
+            marginBottom: '10px'
+        },
         imgContainer: {
             border: '1px solid #dfe6e9',
             borderRadius: '4px',
@@ -100,6 +107,13 @@ function Documentation() {
         td: {
             border: '1px solid #bdc3c7',
             padding: '10px'
+        },
+        stepBox: {
+            background: '#f8f9fa',
+            borderLeft: '4px solid #7f8c8d',
+            padding: '15px',
+            marginBottom: '15px',
+            fontSize: '14px'
         }
     };
 
@@ -124,6 +138,7 @@ function Documentation() {
                     <li><a href="#model-danych" style={{color: '#2980b9'}}>3. Model danych (Graf)</a></li>
                     <li><a href="#funkcjonalnosci" style={{color: '#2980b9'}}>4. Specyfikacja funkcjonalna</a></li>
                     <li><a href="#technologia" style={{color: '#2980b9'}}>5. Stos technologiczny (GRAND Stack)</a></li>
+                    <li><a href="#instrukcja" style={{color: '#2980b9'}}>6. Instrukcja obsługi systemu</a></li>
                 </ul>
             </nav>
 
@@ -266,6 +281,42 @@ function Documentation() {
     columnName: "other"
   )
 }`}
+                </div>
+            </section>
+
+            {/* --- 6. INSTRUKCJA OBSŁUGI --- */}
+            <section id="instrukcja" style={styles.section}>
+                <h2 style={styles.h2}>6. Instrukcja obsługi systemu</h2>
+                <p>
+                    Poniższa instrukcja opisuje kroki niezbędne do realizacji kluczowych scenariuszy użycia w aplikacji.
+                </p>
+
+                <h4 style={styles.h4}>6.1. Logowanie i Rejestracja</h4>
+                <div style={styles.stepBox}>
+                    W systemie PoC zastosowano uproszczony model autoryzacji. W prawym górnym rogu ekranu znajduje się pole <strong>"Nazwa użytkownika"</strong>.
+                    Wpisanie dowolnego identyfikatora i kliknięcie <strong>"Zaloguj"</strong> powoduje utworzenie węzła Użytkownika w grafie (jeśli nie istnieje) lub zalogowanie do istniejącego konta.
+                </div>
+
+                <h4 style={styles.h4}>6.2. Wyszukiwanie zasobów</h4>
+                <div style={styles.stepBox}>
+                    Pasek wyszukiwania znajduje się w centralnej części ekranu. System obsługuje zapytania wielokryterialne.
+                    Wpisanie frazy (np. <em>"Sapkowski"</em>, <em>"Fantasy"</em> lub <em>"1993"</em>) automatycznie filtruje widoczne zasoby, przeszukując węzły typu Książka, Autor oraz Gatunek.
+                </div>
+
+                <h4 style={styles.h4}>6.3. Wypożyczanie książek</h4>
+                <div style={styles.stepBox}>
+                    1. Zaloguj się do systemu.<br/>
+                    2. Kliknij na kafel wybranej książki, aby otworzyć okno szczegółów.<br/>
+                    3. Jeśli status książki to <span style={{color: 'green', fontWeight: 'bold'}}>Dostępna</span>, kliknij przycisk <strong>"Wypożycz"</strong>.<br/>
+                    4. System utworzy relację w bazie danych, a status zmieni się na <span style={{color: 'red', fontWeight: 'bold'}}>Wypożyczona</span>.
+                </div>
+
+                <h4 style={styles.h4}>6.4. Dodawanie nowych pozycji (CRUD)</h4>
+                <div style={styles.stepBox}>
+                    1. Kliknij przycisk <strong>"Dodaj nową książkę"</strong> w lewym górnym rogu.<br/>
+                    2. Wypełnij formularz (Tytuł, Autor, Gatunek, Rok).<br/>
+                    3. Zatwierdź przyciskiem <strong>"Zapisz w bazie"</strong>.<br/>
+                    <em>Uwaga: Jeśli podany Autor lub Gatunek już istnieje w grafie, system nie utworzy duplikatu, lecz połączy nową książkę z istniejącym węzłem.</em>
                 </div>
             </section>
 
